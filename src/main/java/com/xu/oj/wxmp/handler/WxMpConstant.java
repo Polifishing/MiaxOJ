@@ -1,0 +1,16 @@
+package com.xu.oj.wxmp.handler;
+
+/**
+ * 微信公众号相关常量
+ *
+ * @author <a href="https://github.com/Polifishing/MiaxOJ">徐书恒</a>
+
+ **/
+public class WxMpConstant {
+
+    /**
+     * 点击菜单 key
+     */
+    public static final String CLICK_MENU_KEY = "CLICK_MENU_KEY";
+
+}

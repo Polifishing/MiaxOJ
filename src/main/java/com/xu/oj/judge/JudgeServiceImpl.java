@@ -81,26 +81,49 @@ public class JudgeServiceImpl implements JudgeService{
                 .inputList(inputList)
                 .build();
         ExecuteCodeResponse executeCodeResponse = codeSandbox.executeCode(executeCodeRequest);
-        List<String> outputList = executeCodeResponse.getOutputList();
-        JudgeContext judgeContext = new JudgeContext();
-        judgeContext.setJudgeInfo(executeCodeResponse.getJudgeInfo());
-        judgeContext.setJudgeCaseList(judgeCaseList);
-        judgeContext.setOutputList(outputList);
-        judgeContext.setQuestion(question);
-        judgeContext.setInputList(inputList);
-        judgeContext.setQuestionSubmit(questionSubmit);
-        //调用策略
-        JudgeInfo judgeInfo = judgeManager.doJudge(judgeContext);
-        //修改数据库判题结果
-        questionSubmitUpdate = new QuestionSubmit();
-        questionSubmitUpdate.setId(questionSubmitId);
-        questionSubmitUpdate.setStatus(QuestionSubmitStatusEnum.SUCCEED.getValue());
-        questionSubmitUpdate.setJudgeInfo(JSONUtil.toJsonStr(judgeInfo));
+
+        if(executeCodeResponse.getMessage()==null||!(executeCodeResponse.getMessage().equals("编译失败")||executeCodeResponse.getMessage().equals("运行超时")))
+        {
+            List<String> outputList = executeCodeResponse.getOutputList();
+            JudgeContext judgeContext = new JudgeContext();
+            judgeContext.setJudgeInfo(executeCodeResponse.getJudgeInfo());
+            judgeContext.setJudgeCaseList(judgeCaseList);
+            judgeContext.setOutputList(outputList);
+            judgeContext.setQuestion(question);
+            judgeContext.setInputList(inputList);
+            judgeContext.setQuestionSubmit(questionSubmit);
+            //调用策略
+            JudgeInfo judgeInfo = judgeManager.doJudge(judgeContext);
+            //修改数据库判题结果
+            questionSubmitUpdate = new QuestionSubmit();
+            questionSubmitUpdate.setId(questionSubmitId);
+            questionSubmitUpdate.setStatus(QuestionSubmitStatusEnum.SUCCEED.getValue());
+            questionSubmitUpdate.setJudgeInfo(JSONUtil.toJsonStr(judgeInfo));
+        }
+        else
+        {
+            //修改数据库判题结果
+            questionSubmitUpdate = new QuestionSubmit();
+            questionSubmitUpdate.setId(questionSubmitId);
+            questionSubmitUpdate.setStatus(QuestionSubmitStatusEnum.FAILED.getValue());
+            JudgeInfo judgeInfo = executeCodeResponse.getJudgeInfo();
+            judgeInfo.setMessage(executeCodeResponse.getMessage());
+            judgeInfo.setTime(executeCodeResponse.getJudgeInfo().getTime());
+            questionSubmitUpdate.setJudgeInfo(JSONUtil.toJsonStr(judgeInfo));
+        }
         update = questionSubmitService.updateById(questionSubmitUpdate);
         if(!update){
             throw new BusinessException(ErrorCode.SYSTEM_ERROR,"题目状态更新错误");
         }
         QuestionSubmit questionSubmitResult = questionSubmitService.getById(questionId);
+        if(questionSubmitUpdate.getStatus()==2) {
+            question.setAcceptedNum(question.getAcceptedNum()+1);
+        }
+        question.setSubmitNum(question.getSubmitNum()+1);
+        update = questionService.updateById(question);
+        if (!update) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "题目状态更新错误");
+        }
         return questionSubmitResult;
     }
 }
